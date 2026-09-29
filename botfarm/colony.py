@@ -17,6 +17,7 @@ import random
 from dataclasses import asdict, dataclass, field
 
 from .bot import Bot, DayResult
+from .data import HistoricalMarket
 from .ledger import Card
 from .market import SimulatedMarket
 from .strategies import Genome
@@ -55,7 +56,7 @@ class DaySummary:
 @dataclass
 class Colony:
     config: ColonyConfig = field(default_factory=ColonyConfig)
-    market: SimulatedMarket | None = None
+    market: SimulatedMarket | HistoricalMarket | None = None
     initial_genomes: list[Genome] | None = None  # sonst zufällige Start-Strategien
     card: Card = field(init=False)
     bots: dict[str, Bot] = field(default_factory=dict, init=False)
@@ -152,8 +153,10 @@ class Colony:
                 self.shutdown(bot, "Not-Aus")
             return self._summarize(0, 0, 0.0, "Not-Aus (Kill-Switch-Datei gefunden)")
 
-        self.day += 1
         prices = self.market.next_day()
+        if prices is None:
+            return self._summarize(0, 0, 0.0, "keine Marktdaten mehr")
+        self.day += 1
         results: list[tuple[Bot, DayResult]] = [
             (bot, bot.trade_day(prices, self.config.fee_rate)) for bot in self.alive_bots
         ]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import accumulate
 
 from .strategies import Genome, target_exposure
 
@@ -42,10 +43,12 @@ class Bot:
         entry_price: float | None = None
         trades = 0
 
+        prefix = list(accumulate(prices, initial=0.0))
         last = len(prices) - 1
         for t, price in enumerate(prices):
             equity = self.cash + units * price
-            target = 0.0 if t == last else target_exposure(self.genome, prices, t, units > 0, entry_price)
+            target = 0.0 if t == last else target_exposure(
+                self.genome, prices, t, units > 0, entry_price, prefix)
 
             if units == 0 and target > 0:
                 spend = equity * target

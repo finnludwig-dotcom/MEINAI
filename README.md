@@ -40,6 +40,30 @@ Wichtige Optionen:
 | `--respawn` | Wenn alle Bots tot sind: neue Bots aus dem Restguthaben der Karte starten |
 | `--report datei.json` | Stammbaum, Genome und alle Ereignisse als JSON |
 
+## Test mit echten Kursdaten
+
+Mit `--symbol` spielt die Kolonie echte historische Minutenkurse von Binance
+ab (öffentliche Daten, kein Konto nötig, Zwischenspeicher in `.cache/`):
+
+```bash
+python3 -m botfarm --symbol BTCUSDT --from 2025-09-20 --days 360 --initial-bots 5 --respawn
+```
+
+Ergebnis (360 Tage ab 20.09.2025, 5 Start-Bots, Respawn, je 10 Läufe mit
+verschiedenen Seeds, Start 50 €):
+
+| Markt | Gebühr | Endkapital Median | Spanne | Bots erzeugt | Nur kaufen und halten |
+|---|---|---|---|---|---|
+| BTCUSDT | 0,1 % | 40,09 € | 37,54–43,15 € | ~1170 | 33,81 € |
+| BTCUSDT | 0 % | 50,32 € | 46,71–53,00 € | ~1000 | 33,81 € |
+| ETHUSDT | 0,1 % | 36,40 € | 33,12–40,93 € | ~1060 | 28,15 € |
+| ETHUSDT | 0 % | 47,97 € | 43,99–55,51 € | ~940 | 28,15 € |
+
+Mit realistischen Gebühren verliert die Kolonie 20–27 % pro Jahr. Ohne
+Gebühren landet sie ungefähr bei ±0. Das zeigt, dass die Strategien keinen
+echten Vorteil haben. Sie verlieren nur weniger als reines Halten, weil sie
+in einem fallenden Markt oft Cash halten.
+
 ## Sicherheitsmechanismen
 
 - **Nur Paper-Trading:** Gehandelt wird gegen einen simulierten Markt
@@ -71,6 +95,7 @@ statt des simulierten Markts.
 
 ```
 botfarm/
+  data.py        Echte Binance-Kursdaten + HistoricalMarket
   ledger.py      Karte: Guthaben + Buchungsprotokoll
   market.py      Simulierter Markt (GBM mit Bull/Bear/Seitwärts/Volatil-Phasen)
   strategies.py  Strategie-Genom (Momentum, Mean-Reversion, Breakout) + Mutation

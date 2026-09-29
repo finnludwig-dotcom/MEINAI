@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 
 from .colony import Colony, ColonyConfig, DaySummary
+from .data import HistoricalMarket, load_binance_days
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,9 +22,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--initial-bots", type=int, default=1, help="Startkapital auf so viele Bots verteilen")
     p.add_argument("--respawn", action="store_true",
                    help="Neuen Bot aus der Kartenreserve starten, wenn alle abgeschaltet sind")
+    p.add_argument("--symbol", type=str, default=None,
+                   help="Echte Binance-Kursdaten statt Simulation, z.B. BTCUSDT oder ETHEUR")
+    p.add_argument("--from", dest="start", type=date.fromisoformat, default=None,
+                   help="Erster historischer Tag (JJJJ-MM-TT), nur mit --symbol")
     p.add_argument("--report", type=str, default=None, help="JSON-Report mit allen Bots und Ereignissen")
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args(argv)
+
+    market = None
+    if args.symbol:
+        if args.start is None:
+            p.error("--symbol braucht --from JJJJ-MM-TT")
+        print(f"Lade {args.days} Tage {args.symbol} ab {args.start} ...")
+        market = HistoricalMarket(load_binance_days(args.symbol, args.start, args.days), args.symbol)
 
     colony = Colony(ColonyConfig(
         start_capital=args.capital,
@@ -33,12 +46,12 @@ def main(argv: list[str] | None = None) -> int:
         initial_bots=args.initial_bots,
         respawn_from_reserve=args.respawn,
         seed=args.seed,
-    ))
+    ), market=market)
 
     def show(s: DaySummary) -> None:
         if args.quiet:
             return
-        print(f"Tag {s.day:3d} | {s.regime:8s} | aktiv {s.alive:3d} | +{s.born:3d} neu | "
+        print(f"Tag {s.day:3d} | {s.regime:10s} | aktiv {s.alive:3d} | +{s.born:3d} neu | "
               f"-{s.killed:3d} abgeschaltet | Gesamt {s.total_equity:9.2f} € | "
               f"Karte {s.card_reserve:8.2f} € | bester Tag {s.best_profit:+8.2f} €")
         if s.stopped_reason:

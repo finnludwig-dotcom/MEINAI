@@ -7,7 +7,6 @@ entstehen über die Generationen Varianten; unprofitable werden abgeschaltet.
 from __future__ import annotations
 
 import random
-import statistics
 from dataclasses import asdict, dataclass, replace
 
 KINDS = ("momentum", "mean_reversion", "breakout")
@@ -80,7 +79,7 @@ class Genome:
 
 
 def target_exposure(genome: Genome, prices: list[float], t: int, in_position: bool,
-                    entry_price: float | None) -> float:
+                    entry_price: float | None, prefix: list[float]) -> float:
     """Gewünschter Anteil des Kapitals im Markt zum Tick t (0 = alles Cash). Nur Long, kein Hebel."""
     price = prices[t]
 
@@ -93,9 +92,7 @@ def target_exposure(genome: Genome, prices: list[float], t: int, in_position: bo
     if t < genome.lookback:
         return genome.exposure if in_position else 0.0
 
-    window = prices[t - genome.lookback:t]
-    ref = window[0]
-    ret = price / ref - 1.0
+    ret = price / prices[t - genome.lookback] - 1.0
 
     if genome.kind == "momentum":
         if not in_position and ret > genome.entry:
@@ -104,7 +101,7 @@ def target_exposure(genome: Genome, prices: list[float], t: int, in_position: bo
             return 0.0
 
     elif genome.kind == "mean_reversion":
-        mean = statistics.fmean(window)
+        mean = (prefix[t] - prefix[t - genome.lookback]) / genome.lookback
         dev = price / mean - 1.0
         if not in_position and dev < -genome.entry:
             return genome.exposure
@@ -112,6 +109,7 @@ def target_exposure(genome: Genome, prices: list[float], t: int, in_position: bo
             return 0.0
 
     elif genome.kind == "breakout":
+        window = prices[t - genome.lookback:t]
         high = max(window)
         low = min(window)
         if not in_position and price > high * (1.0 + genome.entry):

@@ -4,6 +4,9 @@ import tempfile
 import unittest
 
 from botfarm import Bot, Card, Colony, ColonyConfig, Genome, SimulatedMarket
+from datetime import date
+
+from botfarm.data import HistoricalMarket
 from botfarm.ledger import InsufficientFunds
 from botfarm.market import Regime
 
@@ -139,6 +142,15 @@ class ColonyTests(unittest.TestCase):
 
     def test_simulated_market_is_reproducible(self):
         self.assertEqual(SimulatedMarket(seed=5).next_day(), SimulatedMarket(seed=5).next_day())
+
+    def test_historical_market_stops_when_data_ends(self):
+        days = [(date(2026, 1, d), [100.0 * (1.001 ** i) for i in range(200)]) for d in (1, 2)]
+        colony = Colony(ColonyConfig(seed=1, kill_switch_file=None, fee_rate=0.0),
+                        market=HistoricalMarket(days), initial_genomes=[MOMENTUM])
+        summaries = colony.run(10)
+        self.assertEqual(colony.day, 2)
+        self.assertEqual(summaries[-1].stopped_reason, "keine Marktdaten mehr")
+        self.assertEqual(summaries[1].regime, "2026-01-02")
 
     def test_report_is_written(self):
         colony = make_colony(0.001)
